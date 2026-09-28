@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 using Unity.Cinemachine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
+using Unity.VisualScripting;
 
 public class Player : MonoBehaviour
 {
@@ -23,16 +24,29 @@ public class Player : MonoBehaviour
     private CharacterController controller;
     public Vector3 velocity;
 
-    // logic fields
+    // prefabs
+    [SerializeField] private Marble marble;
+
+    // phase logic fields
     private bool isMancerPhase;
     private bool isShooting;
     private bool isLaunchingPhase;
     private bool isTulpaPhase;
 
+    // shoot trajectory logic
+    [SerializeField] private Projection proj;
+    [SerializeField] private Transform marbleSpawn;
+    [SerializeField] private float shootForce = 10f;
+
     // shoot boundary fields
     [SerializeField] private float mancerRadius = 3.0f;
     [SerializeField] private ShotRange shotRange;
     private Vector3 mancerCenter;
+
+    // tracking ball fields
+    [SerializeField] private CinemachineCamera trackingCam;
+    [SerializeField] private float minDistToSwitch = 5.0f;
+    private Transform currentMarble;
 
     void Start()
     {
@@ -41,6 +55,9 @@ public class Player : MonoBehaviour
         isLaunchingPhase = false;
         isTulpaPhase = false;
         controller = GetComponent<CharacterController>();
+
+        if (cam != null) cam.Priority = 10;
+        if (trackingCam != null) trackingCam.Priority = 0;
 
         if (isMancerPhase)
         {
@@ -66,7 +83,7 @@ public class Player : MonoBehaviour
         }
         else if (isLaunchingPhase)
         {
-
+            HandleLaunchingPhase();
         }
         else if (isTulpaPhase)
         {
@@ -142,15 +159,64 @@ public class Player : MonoBehaviour
 
         float aimRotationInput = Input.GetAxis("Horizontal");
         transform.Rotate(Vector3.up * aimRotationInput * aimRotationSpeed * Time.deltaTime);
+        Vector3 shotVelocity = (marbleSpawn.forward + Vector3.up).normalized * shootForce;
+
+        proj.SimulateTrajectory(marble, marbleSpawn.position, shotVelocity);
+
+        if (Input.GetKeyDown(KeyCode.W))
+        {
+            if ((shootForce + 1) < 25)
+            {
+                shootForce += 1;
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.S))
+        {
+            if ((shootForce - 1) > 0)
+            {
+                shootForce -= 1;
+            }
+        }
+
+        // shoot golf ball
+        if (Input.GetMouseButtonDown(0))
+        {
+            var spawned = Instantiate(marble, marbleSpawn.position, marbleSpawn.rotation);
+            spawned.Init(shotVelocity, false);
+            currentMarble = spawned.transform;
+
+            if (trackingCam != null)
+            {
+                trackingCam.Target.TrackingTarget = spawned.transform;
+                trackingCam.Target.LookAtTarget = spawned.transform;
+            }
+
+            isMancerPhase = false;
+            isLaunchingPhase = true;
+        }
     }
 
+    private void HandleLaunchingPhase()
+    {
+        if (currentMarble != null && trackingCam != null)
+        {
+            float dist = Vector3.Distance(transform.position, currentMarble.position);
+
+            if (dist >= minDistToSwitch && trackingCam.Priority != 10)
+            {
+                trackingCam.Priority = 10;
+                if (cam != null) cam.Priority = 0;
+            }
+        }
+    }
     private void ToggleShoot()
     {
         // right mouse click to enter/exit shooting mode
         if (Input.GetMouseButtonDown(1))
         {
             isShooting = !isShooting;
-            return;    
+            return;
         }
     }
 

@@ -2,47 +2,12 @@ using UnityEngine;
 
 public class Marble : MonoBehaviour
 {
-    private Rigidbody rb;
-    private bool hasBeenShot;
-    public float stopRollThresh = 0.05f;
-    public float stopRollDelay = 0.2f;
-    private float stopTimer;
+    [SerializeField] private Rigidbody rb;
+    private bool _isGhost;
 
-    private void Awake()
+    public void Init(Vector3 velocity, bool isGhost)
     {
-        hasBeenShot = false;
-        rb = GetComponent<Rigidbody>();
-        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        _isGhost = isGhost; 
+        rb.AddForce(velocity, ForceMode.Impulse);   
     }
-
-    public void Launch(Vector3 velocity)
-    {
-        hasBeenShot = true;
-        stopTimer = 0f;
-        rb.AddForce(velocity, ForceMode.VelocityChange);
-    }
-
-    void Update()
-    {
-        if (hasBeenShot)
-        {
-            float currSpeed = rb.linearVelocity.sqrMagnitude;
-            if (currSpeed <= stopRollThresh * stopRollThresh)
-            {
-                stopTimer += Time.deltaTime;
-
-                if (stopTimer >= stopRollDelay)
-                {
-                    StopMarble();
-                }
-            }
-        }
-    }
-
-    private void StopMarble()
-    {
-        hasBeenShot = false;
-        // enter tulpa mode
-    }
-
 }
