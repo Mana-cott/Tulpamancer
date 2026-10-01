@@ -37,9 +37,9 @@ public class Projection : MonoBehaviour
         }
     }
 
-    public void SimulateTrajectory(Marble marble, Vector3 pos, Vector3 velocity)
+    public Vector3 SimulateTrajectory(Marble marble, Vector3 pos, Vector3 velocity)
     {
-        if (marble == null || line == null) return;
+        if (marble == null || line == null) return pos;
 
         var ghostObj = Instantiate(marble, pos, Quaternion.identity);
         if (ghostObj.TryGetComponent<Renderer>(out var rend))
@@ -48,16 +48,21 @@ public class Projection : MonoBehaviour
         }
         SceneManager.MoveGameObjectToScene(ghostObj.gameObject, simulationScene);
 
-        ghostObj.Init(velocity, true);
+        ghostObj.Init(velocity, true, null);
 
         line.positionCount = maxPhysicsFrameIterations;
+
+        Vector3 lastPoint = pos;
 
         for (int i = 0; i < maxPhysicsFrameIterations; i++)
         {
             physicsScene.Simulate(Time.fixedDeltaTime);
+            lastPoint = ghostObj.transform.position;
             line.SetPosition(i, ghostObj.transform.position);
         }
 
         Destroy(ghostObj.gameObject);
+
+        return lastPoint;
     }
 }
